@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# Secrets
+.env
+
+# Generated data, models in progress, logs
+ml/data/
+logs/
+data/
+
+# Broker files generated from .env by scripts/setup_broker.ps1
+config/mosquitto/mosquitto.conf
+config/mosquitto/passwd
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# Editors / OS
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
+
+# Salesforce CLI metadata (not part of this project)
+.sf/

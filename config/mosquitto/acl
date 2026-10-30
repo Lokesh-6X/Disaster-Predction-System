@@ -1,0 +1,12 @@
+# Access rules for this project's broker (port 1884).
+# Usernames must match .env: MQTT_USERNAME=backend; each kit's username = its kit_id.
+
+# Backend: read telemetry and status from every kit
+user backend
+topic read weather/kit/+/telemetry
+topic read weather/kit/+/status
+
+# Every kit may write only under its own kit_id (%u = the username),
+# including its retained status and Last-Will
+pattern write weather/kit/%u/telemetry
+pattern write weather/kit/%u/status

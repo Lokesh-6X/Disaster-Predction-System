@@ -1,0 +1,24 @@
+# Synthetic dataset settings — used only to train v1 models.
+# Requirements: FR-CFG-02, FR-SYN-*. Design: docs/design/system_design_v1.md §4.2, §7
+
+start_date: "2022-01-01"
+years: 3
+interval_min: 5
+seed: 42
+kit_id: "kit01"
+target_hazard_hour_share: [0.03, 0.05]
+
+events:
+  heat_spells_per_year: 4        # mainly Apr–May
+  wind_spells_per_year: 10       # mainly Jun–Sep
+  storms_per_year: 8             # Mar–May afternoons
+
+faults:
+  enabled: true
+  spike_prob: 0.001              # per reading per variable
+  stuck_runs_per_year: 6
+  gap_runs_per_year: 20          # 10–60 min
+  offline_runs_per_year: 4       # 1–12 h
+  bme_failure_runs_per_year: 3   # BME280 null → exercises DHT11 fallback
+
+output: "ml/data/synthetic/karur_v1.parquet"

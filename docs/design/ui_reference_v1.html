@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SkyWatch · Hazard Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F3F6F5; --side:#EAF0EE; --card:#FFFFFF; --active:#D8EEEA;
+  --line:#D5DEDC; --line2:#E3EAE8; --input:#B7C4C1;
+  --text:#12201F; --text2:#3E504D; --muted:#5B6D6A; --faint:#9AA8A5;
+  --accent:#0E7C70; --accent-hover:#0A5A51;
+  --green:#4CC38A; --yellow:#E3B21C; --orange:#F5934A; --red:#F2555A;
+  --mono:'IBM Plex Mono', ui-monospace, monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:'Space Grotesk',system-ui,sans-serif}
+a{color:var(--accent)} a:hover{color:var(--accent-hover)}
+.mono{font-family:var(--mono)}
+.label{font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.08em}
+.screen{display:none}
+.screen.on{display:flex}
+.app{min-height:100vh;flex-wrap:wrap}
+
+/* sidebar */
+nav.side{flex:1 1 232px;max-width:100%;padding:28px 20px;border-right:1px solid var(--line);display:flex;flex-direction:column;gap:32px;background:var(--side)}
+.brand{display:flex;align-items:center;gap:12px}
+.brand b{font-size:17px;letter-spacing:.02em;display:block}
+.navlinks{display:flex;flex-direction:column;gap:4px}
+.navlinks a,.signout{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:10px;color:var(--text2);text-decoration:none;font-size:15px;min-height:44px}
+.navlinks a[aria-current]{background:var(--active);color:var(--text);font-weight:600}
+.navlinks a[aria-current] svg{stroke:var(--accent)}
+.count{margin-left:auto;font-family:var(--mono);font-size:12px;background:var(--orange);color:#1A0E04;border-radius:99px;padding:2px 8px;font-weight:600}
+.sitebox{margin-top:auto;display:flex;flex-direction:column;gap:10px;padding:16px;border:1px solid var(--line);border-radius:12px}
+.signout{padding:0}
+
+main{flex:999 1 560px;min-width:0;padding:28px 36px 48px;display:flex;flex-direction:column;gap:28px}
+h1{margin:0;font-size:32px;font-weight:600;letter-spacing:-.01em}
+h2{margin:0;font-size:20px;font-weight:600}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px}
+.pill{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border:1px solid var(--line);border-radius:99px;font-family:var(--mono);font-size:13px;background:var(--card);color:var(--text2)}
+.badge{display:inline-flex;align-self:flex-start;padding:6px 12px;border-radius:99px;font-weight:700;font-size:14px}
+.badge.sm{padding:4px 10px;font-size:12px}
+.b-red{background:var(--red);color:#1A0405}
+.b-orange{background:var(--orange);color:#1A0E04}
+.b-yellow{background:var(--yellow);color:#1A1604}
+.b-green{background:var(--green);color:#04170D}
+.row-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px}
+
+/* hazards */
+.hazards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px}
+.hazard{border-radius:18px;padding:24px;display:flex;flex-direction:column;gap:18px}
+.hazard .top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.hazard .info{display:flex;flex-direction:column;gap:8px;font-size:14px;color:var(--text2);line-height:1.5}
+.bands{display:flex;gap:4px}
+.bands div{flex:1;height:6px;border-radius:3px}
+.bands .cur{outline:2px solid var(--text);outline-offset:2px}
+
+/* readings */
+.grid-auto{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px}
+.reading{padding:18px;display:flex;flex-direction:column;gap:6px}
+.reading .val{font-family:var(--mono);font-size:34px;font-weight:500}
+.reading .val small{font-size:16px;color:var(--muted)}
+.reading .sub{font-size:13px;color:var(--text2)}
+.reading.empty{background:transparent;border:1px dashed var(--input)}
+.warn{display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:12px;background:#FFF3C9;color:#6B5300;font-size:14px;flex-wrap:wrap}
+
+/* charts */
+.seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{min-height:40px;padding:0 16px;background:transparent;color:var(--muted);border:0;font-family:var(--mono);font-size:13px;cursor:pointer}
+.seg button.on{background:var(--active);color:var(--text)}
+.charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+figure{margin:0;padding:18px;display:flex;flex-direction:column;gap:10px}
+figcaption{display:flex;justify-content:space-between;font-size:14px}
+figure svg{width:100%;height:150px}
+.axis{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;color:var(--muted)}
+
+.alert-row{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px;padding:16px 20px;border-bottom:1px solid var(--line)}
+.alert-row:last-child{border-bottom:0}
+
+/* alerts table */
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chips button{min-height:44px;padding:0 18px;border-radius:99px;font-family:inherit;font-size:14px;cursor:pointer;border:1px solid var(--input);background:transparent;color:var(--text2)}
+.chips button[aria-pressed="true"]{border-color:var(--accent);background:var(--active);color:var(--text)}
+.tablebox{overflow-x:auto}
+table{width:100%;min-width:760px;border-collapse:collapse;font-size:14px}
+th{text-align:left;font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.06em;font-weight:500;padding:14px 12px;border-bottom:1px solid var(--line)}
+td{padding:16px 12px;border-bottom:1px solid var(--line2);color:var(--text2)}
+th:first-child,td:first-child{padding-left:20px}
+td.h{font-weight:600;color:var(--text)}
+.stat{padding:16px;display:flex;flex-direction:column;gap:4px}
+.stat .n{font-family:var(--mono);font-size:28px}
+
+/* kits */
+.kit{border-radius:18px;padding:28px;display:flex;flex-wrap:wrap;gap:32px}
+dl{margin:0;display:grid;grid-template-columns:max-content 1fr;gap:10px 20px;font-size:14px}
+dt{color:var(--muted)} dd{margin:0}
+.sensor{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:12px;background:var(--side);flex-wrap:wrap}
+.sensor .nm{flex:1 1 160px;font-weight:600}
+.sensor .ds{flex:2 1 200px;font-size:13px;color:var(--text2)}
+.tag{padding:4px 10px;border-radius:99px;font-size:12px;font-weight:600}
+.t-ok{background:#DDF3E6;color:#1B6B42}
+.t-warn{background:#FFF3C9;color:#6B5300}
+.t-off{border:1px solid var(--input);color:var(--muted)}
+
+/* login */
+.login{min-height:100vh;flex-wrap:wrap}
+.login .left{flex:1 1 480px;min-width:0;padding:56px;display:flex;flex-direction:column;justify-content:space-between;gap:48px;background:var(--side);border-right:1px solid var(--line)}
+.login .right{flex:1 1 420px;min-width:0;padding:56px 32px;display:flex;align-items:center;justify-content:center}
+form{width:100%;max-width:380px;display:flex;flex-direction:column;gap:22px}
+.field{display:flex;flex-direction:column;gap:8px}
+.field label{font-size:14px;font-weight:500}
+input{min-height:48px;padding:0 14px;border-radius:10px;border:1px solid var(--input);background:var(--card);color:var(--text);font-size:15px;font-family:inherit}
+input:focus{outline:2px solid var(--accent);outline-offset:1px}
+.btn{min-height:50px;display:flex;align-items:center;justify-content:center;border-radius:10px;background:var(--accent);color:#fff;font-weight:700;font-size:16px;border:0;cursor:pointer;font-family:inherit}
+.btn:hover{background:var(--accent-hover)}
+@media (max-width:640px){main{padding:24px 16px 40px}.login .left{padding:32px 16px}.kit{padding:20px}}
+</style>
+</head>
+<body>
+
+<!-- ============ LOGIN ============ -->
+<div class="screen login" id="login">
+  <section class="left" aria-label="About">
+    <div class="brand">
+      <svg width="38" height="38" viewBox="0 0 34 34" aria-hidden="true"><circle cx="17" cy="17" r="15" fill="none" stroke="#0E7C70" stroke-width="2"/><path d="M5 20 C10 12, 15 26, 20 17 S27 12, 29 15" fill="none" stroke="#0E7C70" stroke-width="2" stroke-linecap="round"/></svg>
+      <b style="font-size:20px">SkyWatch</b>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:28px">
+      <svg viewBox="0 0 520 220" style="width:100%;max-width:520px;height:auto" aria-hidden="true">
+        <circle cx="110" cy="110" r="96" fill="none" stroke="#D5DEDC"/><circle cx="110" cy="110" r="64" fill="none" stroke="#D5DEDC"/><circle cx="110" cy="110" r="32" fill="none" stroke="#D5DEDC"/>
+        <path d="M110 14 A96 96 0 0 1 200 76" fill="none" stroke="#F5934A" stroke-width="6" stroke-linecap="round"/>
+        <path d="M174 110 A64 64 0 0 1 150 160" fill="none" stroke="#E3B21C" stroke-width="6" stroke-linecap="round"/>
+        <path d="M110 78 A32 32 0 0 1 140 98" fill="none" stroke="#4CC38A" stroke-width="6" stroke-linecap="round"/>
+        <circle cx="110" cy="110" r="5" fill="#0E7C70"/>
+        <polyline points="250,150 280,140 310,146 340,120 370,126 400,96 430,104 460,72 490,80 520,52" fill="none" stroke="#0E7C70" stroke-width="2.5" stroke-linejoin="round"/>
+        <line x1="250" y1="180" x2="520" y2="180" stroke="#D5DEDC"/>
+      </svg>
+      <h1 style="font-size:48px;line-height:1.05;letter-spacing:-.02em;max-width:520px">Three hours of warning, from one sensor kit.</h1>
+      <p style="margin:0;font-size:17px;line-height:1.6;color:var(--text2);max-width:480px">Live readings, heat-wave, high-wind and heavy-rain risk for [SITE NAME], refreshed every hour.</p>
+    </div>
+    <span class="mono" style="font-size:12px;color:var(--muted)">Admin access only · v0.1</span>
+  </section>
+  <section class="right" aria-label="Sign in">
+    <form onsubmit="location.hash='dashboard';return false">
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <h2 style="font-size:28px">Sign in</h2>
+        <p style="margin:0;color:var(--text2);font-size:15px">Use your admin account.</p>
+      </div>
+      <div class="field"><label for="email">Email</label><input id="email" type="email" autocomplete="username" placeholder="admin@[yourdomain]"></div>
+      <div class="field"><label for="pw">Password</label><input id="pw" type="password" autocomplete="current-password"></div>
+      <button class="btn" type="submit">Sign in</button>
+      <p style="margin:0;font-size:13px;color:var(--muted);line-height:1.5">Forgot your password? Ask the site administrator to reset it.</p>
+    </form>
+  </section>
+</div>
+
+<!-- ============ APP SHELL (dashboard / alerts / kits) ============ -->
+<div class="screen app" id="app">
+  <nav class="side" aria-label="Main">
+    <div class="brand">
+      <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><circle cx="17" cy="17" r="15" fill="none" stroke="#0E7C70" stroke-width="2"/><path d="M5 20 C10 12, 15 26, 20 17 S27 12, 29 15" fill="none" stroke="#0E7C70" stroke-width="2" stroke-linecap="round"/></svg>
+      <div><b>SkyWatch</b><span class="label">HAZARD CONSOLE</span></div>
+    </div>
+    <div class="navlinks">
+      <a href="#dashboard" data-nav="dashboard"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>Dashboard</a>
+      <a href="#alerts" data-nav="alerts"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>Alerts<span class="count">2</span></a>
+      <a href="#kits" data-nav="kits"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/><path d="M9 6h6"/></svg>Kits</a>
+    </div>
+    <div class="sitebox">
+      <span class="label">SITE</span>
+      <span style="font-weight:600;font-size:15px">[SITE NAME]</span>
+      <span class="mono" style="font-size:12px;color:var(--muted)">[LAT]°N, [LON]°E</span>
+      <span class="mono" style="font-size:12px;color:var(--muted)">from config/site.yaml</span>
+    </div>
+    <a class="signout" href="#login"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>Sign out</a>
+  </nav>
+
+  <!-- ---------- DASHBOARD ---------- -->
+  <main data-page="dashboard">
+    <header style="display:flex;flex-wrap:wrap;align-items:center;gap:16px 24px;justify-content:space-between">
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <span class="label" style="font-size:12px">SAT 31 OCT · 14:23 IST</span>
+        <h1>Next 3 hours at a glance</h1>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px">
+        <span class="pill" style="color:var(--text)"><svg width="10" height="10" aria-hidden="true"><circle cx="5" cy="5" r="5" fill="#4CC38A"/></svg>KIT-01 online · 42 s ago</span>
+        <span class="pill"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0E7C70" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Next model run in 37 min</span>
+        <span class="pill"><svg width="10" height="10" aria-hidden="true"><circle cx="5" cy="5" r="5" fill="#0E7C70"/></svg>Live</span>
+      </div>
+    </header>
+
+    <section class="hazards" aria-label="Hazard outlook">
+      <article class="card hazard">
+        <div class="top">
+          <div style="display:flex;flex-direction:column;gap:6px"><span class="label" style="font-size:12px">HEAT WAVE</span><span class="badge b-orange">ORANGE</span></div>
+          <svg width="112" height="112" viewBox="0 0 120 120" role="img" aria-label="Probability 68 percent"><circle cx="60" cy="60" r="50" fill="none" stroke="#D5DEDC" stroke-width="10"/><circle cx="60" cy="60" r="50" fill="none" stroke="#F5934A" stroke-width="10" stroke-linecap="round" stroke-dasharray="213.6 314.2" transform="rotate(-90 60 60)"/><text x="60" y="64" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="26" font-weight="600" fill="#12201F">68%</text><text x="60" y="84" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10" fill="#5B6D6A">PROB.</text></svg>
+        </div>
+        <div class="info"><span>Temp 38.4 °C, rising 0.9 °C/h · <span style="color:var(--text)">+3.6 °C above hourly normal</span></span><span class="mono" style="font-size:12px;color:var(--muted)">Red at ≥ 40 °C and ≥ +4.5 °C</span></div>
+        <div class="bands" aria-hidden="true"><div style="background:#4CC38A"></div><div style="background:#E3B21C"></div><div class="cur" style="background:#F5934A"></div><div style="background:#F6DCDD"></div></div>
+      </article>
+      <article class="card hazard">
+        <div class="top">
+          <div style="display:flex;flex-direction:column;gap:6px"><span class="label" style="font-size:12px">HIGH WIND</span><span class="badge b-yellow">YELLOW</span></div>
+          <svg width="112" height="112" viewBox="0 0 120 120" role="img" aria-label="Probability 31 percent"><circle cx="60" cy="60" r="50" fill="none" stroke="#D5DEDC" stroke-width="10"/><circle cx="60" cy="60" r="50" fill="none" stroke="#E3B21C" stroke-width="10" stroke-linecap="round" stroke-dasharray="97.4 314.2" transform="rotate(-90 60 60)"/><text x="60" y="64" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="26" font-weight="600" fill="#12201F">31%</text><text x="60" y="84" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10" fill="#5B6D6A">PROB.</text></svg>
+        </div>
+        <div class="info"><span>Gusts 11.8 m/s (42 km/h) · <span style="color:var(--text)">pressure falling 1.6 hPa / 3 h</span></span><span class="mono" style="font-size:12px;color:var(--muted)">Red at max gust ≥ 62 km/h</span></div>
+        <div class="bands" aria-hidden="true"><div style="background:#4CC38A"></div><div class="cur" style="background:#E3B21C"></div><div style="background:#F8E3CF"></div><div style="background:#F6DCDD"></div></div>
+      </article>
+      <article class="card hazard">
+        <div class="top">
+          <div style="display:flex;flex-direction:column;gap:6px"><span class="label" style="font-size:12px">HEAVY RAIN</span><span class="badge b-green">GREEN</span></div>
+          <svg width="112" height="112" viewBox="0 0 120 120" role="img" aria-label="Probability 6 percent"><circle cx="60" cy="60" r="50" fill="none" stroke="#D5DEDC" stroke-width="10"/><circle cx="60" cy="60" r="50" fill="none" stroke="#4CC38A" stroke-width="10" stroke-linecap="round" stroke-dasharray="18.9 314.2" transform="rotate(-90 60 60)"/><text x="60" y="64" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="26" font-weight="600" fill="#12201F">6%</text><text x="60" y="84" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10" fill="#5B6D6A">PROB.</text></svg>
+        </div>
+        <div class="info"><span>Humidity 41 %, dew point 23.1 °C · dry air aloft</span><span class="mono" style="font-size:12px;color:var(--muted)">Rain gauge not fitted · model v1, no rain input</span></div>
+        <div class="bands" aria-hidden="true"><div class="cur" style="background:#4CC38A"></div><div style="background:#F5ECC6"></div><div style="background:#F8E3CF"></div><div style="background:#F6DCDD"></div></div>
+      </article>
+    </section>
+
+    <section aria-labelledby="live-h" style="display:flex;flex-direction:column;gap:14px">
+      <div class="row-head"><h2 id="live-h">Live readings · KIT-01</h2><span class="mono" style="font-size:12px;color:var(--muted)">every 60 s · QC passed</span></div>
+      <div class="grid-auto">
+        <div class="card reading"><span class="label">TEMPERATURE</span><span class="val">38.4<small> °C</small></span><span class="sub">BME280 · DHT11 reads 37.6</span></div>
+        <div class="card reading"><span class="label">HUMIDITY</span><span class="val">41<small> %</small></span><span class="sub">Dew point 23.1 °C</span></div>
+        <div class="card reading"><span class="label">PRESSURE</span><span class="val">1003.2<small> hPa</small></span><span class="sub">↓ 1.6 hPa over 3 h</span></div>
+        <div class="card reading"><span class="label">WIND</span><span class="val">6.2<small> m/s</small></span><span class="sub">Gust 11.8 m/s · 42 km/h</span></div>
+        <div class="card reading empty"><span class="label">RAINFALL</span><span class="val" style="color:var(--faint)">—</span><span class="sub" style="color:var(--muted)">Gauge not fitted yet</span></div>
+      </div>
+      <div class="warn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m21.7 18-8-14a2 2 0 0 0-3.4 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.7-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+        <span><strong>Sensor check:</strong> DHT11 and BME280 differ by 0.8 °C, within the 2 °C tolerance. Using BME280.</span>
+      </div>
+    </section>
+
+    <section aria-labelledby="trend-h" style="display:flex;flex-direction:column;gap:14px">
+      <div class="row-head" style="align-items:center">
+        <h2 id="trend-h">Last 24 hours</h2>
+        <div class="seg" role="group" aria-label="Range"><button type="button" class="on">24 h</button><button type="button">48 h</button><button type="button">7 d</button></div>
+      </div>
+      <div class="charts">
+        <figure class="card">
+          <figcaption><span style="font-weight:600">Temperature</span><span class="mono" style="color:var(--muted);font-size:12px">°C · 40 °C line</span></figcaption>
+          <svg viewBox="0 0 480 150" preserveAspectRatio="none" role="img" aria-label="Temperature over 24 hours, low 27 °C overnight rising to 38.4 °C now"><line x1="0" y1="14" x2="480" y2="14" stroke="#F5934A" stroke-dasharray="4 4"/><line x1="0" y1="75" x2="480" y2="75" stroke="#D5DEDC"/><line x1="0" y1="140" x2="480" y2="140" stroke="#D5DEDC"/><polyline fill="none" stroke="#F5934A" stroke-width="2.5" stroke-linejoin="round" points="0,52 20,58 40,66 60,76 80,86 100,96 120,104 140,110 160,114 180,116 200,112 220,104 240,92 260,80 280,68 300,58 320,48 340,40 360,34 380,30 400,27 420,25 440,24 460,23 480,22"/><circle cx="480" cy="22" r="4" fill="#F5934A"/></svg>
+          <div class="axis"><span>14:00</span><span>02:00</span><span>now</span></div>
+        </figure>
+        <figure class="card">
+          <figcaption><span style="font-weight:600">Pressure</span><span class="mono" style="color:var(--muted);font-size:12px">hPa</span></figcaption>
+          <svg viewBox="0 0 480 150" preserveAspectRatio="none" role="img" aria-label="Pressure over 24 hours, falling to 1003.2 hPa now"><line x1="0" y1="75" x2="480" y2="75" stroke="#D5DEDC"/><line x1="0" y1="140" x2="480" y2="140" stroke="#D5DEDC"/><polyline fill="none" stroke="#0E7C70" stroke-width="2.5" stroke-linejoin="round" points="0,90 20,86 40,80 60,74 80,70 100,72 120,78 140,82 160,80 180,72 200,62 220,52 240,44 260,40 280,42 300,50 320,62 340,74 360,86 380,96 400,104 420,110 440,116 460,120 480,124"/><circle cx="480" cy="124" r="4" fill="#0E7C70"/></svg>
+          <div class="axis"><span>14:00</span><span>02:00</span><span>now</span></div>
+        </figure>
+        <figure class="card">
+          <figcaption><span style="font-weight:600">Wind &amp; gusts</span><span class="mono" style="color:var(--muted);font-size:12px">m/s</span></figcaption>
+          <svg viewBox="0 0 480 150" preserveAspectRatio="none" role="img" aria-label="Wind and gusts over 24 hours, gusting to 11.8 m/s now"><line x1="0" y1="75" x2="480" y2="75" stroke="#D5DEDC"/><line x1="0" y1="140" x2="480" y2="140" stroke="#D5DEDC"/><polyline fill="none" stroke="#E3B21C" stroke-width="1.5" stroke-dasharray="3 3" points="0,96 20,92 40,104 60,110 80,118 100,122 120,126 140,124 160,128 180,126 200,120 220,112 240,104 260,96 280,90 300,78 320,70 340,74 360,60 380,52 400,58 420,46 440,40 460,44 480,36"/><polyline fill="none" stroke="#3E504D" stroke-width="2.5" stroke-linejoin="round" points="0,116 20,114 40,120 60,124 80,128 100,130 120,132 140,131 160,133 180,132 200,128 220,124 240,120 260,116 280,112 300,104 320,100 340,102 360,94 380,90 400,92 420,86 440,84 460,86 480,82"/></svg>
+          <div class="axis"><span>14:00</span><span>02:00</span><span>now</span></div>
+        </figure>
+      </div>
+    </section>
+
+    <section aria-labelledby="recent-h" style="display:flex;flex-direction:column;gap:14px">
+      <div class="row-head"><h2 id="recent-h">Recent alerts</h2><a href="#alerts" style="font-size:14px;min-height:44px;display:inline-flex;align-items:center">View all alerts →</a></div>
+      <div class="card">
+        <div class="alert-row"><span class="badge sm b-orange">ORANGE</span><span style="font-weight:600;font-size:15px">Heat wave · 68%</span><span style="color:var(--text2);font-size:14px;flex:1 1 200px">Email sent to 2 admins · cooldown until 16:00</span><span class="mono" style="font-size:12px;color:var(--muted)">14:00 IST</span></div>
+        <div class="alert-row"><span class="badge sm b-yellow">YELLOW</span><span style="font-weight:600;font-size:15px">High wind · 31%</span><span style="color:var(--text2);font-size:14px;flex:1 1 200px">Shown on dashboard only (no email below Orange)</span><span class="mono" style="font-size:12px;color:var(--muted)">14:00 IST</span></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ---------- ALERTS ---------- -->
+  <main data-page="alerts" style="gap:24px">
+    <header style="display:flex;flex-direction:column;gap:4px">
+      <span class="label" style="font-size:12px">HISTORY</span>
+      <h1>Alerts</h1>
+      <p style="margin:4px 0 0;color:var(--text2);font-size:15px">Orange and Red send email. Each hazard waits 2 h before re-alerting at the same level.</p>
+    </header>
+    <div class="grid-auto" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr))">
+      <div class="card stat"><span class="label">LAST 7 DAYS</span><span class="n">7</span><span style="font-size:13px;color:var(--text2)">alerts raised</span></div>
+      <div class="card stat"><span class="label">EMAILED</span><span class="n">3</span><span style="font-size:13px;color:var(--text2)">Orange or Red</span></div>
+      <div class="card stat"><span class="label">CONFIRMED</span><span class="n">2 of 3</span><span style="font-size:13px;color:var(--text2)">hazard happened as forecast</span></div>
+    </div>
+    <div class="chips" role="group" aria-label="Filter by hazard" id="chips"></div>
+    <div class="card tablebox">
+      <table>
+        <thead><tr><th scope="col">ISSUED</th><th scope="col">HAZARD</th><th scope="col">LEVEL</th><th scope="col">PROB.</th><th scope="col">KIT</th><th scope="col">EMAIL</th><th scope="col">OUTCOME</th></tr></thead>
+        <tbody id="alert-rows"></tbody>
+      </table>
+    </div>
+  </main>
+
+  <!-- ---------- KITS ---------- -->
+  <main data-page="kits" style="gap:24px">
+    <header style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:16px">
+      <div style="display:flex;flex-direction:column;gap:4px"><span class="label" style="font-size:12px">DEVICES</span><h1>Kits</h1></div>
+      <button type="button" disabled style="min-height:44px;padding:0 18px;border-radius:10px;border:1px dashed var(--input);background:transparent;color:var(--muted);font-family:inherit;font-size:14px">+ Register kit (coming later)</button>
+    </header>
+    <article class="card kit">
+      <div style="flex:1 1 280px;display:flex;flex-direction:column;gap:18px">
+        <div style="display:flex;align-items:center;gap:14px">
+          <div style="width:56px;height:56px;border-radius:14px;background:var(--active);display:flex;align-items:center;justify-content:center"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#0E7C70" stroke-width="1.8" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3"/></svg></div>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <h2 class="mono" style="font-size:24px">KIT-01</h2>
+            <span style="display:inline-flex;align-items:center;gap:8px;font-size:14px;color:var(--text2)"><svg width="10" height="10" aria-hidden="true"><circle cx="5" cy="5" r="5" fill="#4CC38A"/></svg>Online · last reading 42 s ago</span>
+          </div>
+        </div>
+        <dl>
+          <dt>Board</dt><dd>ESP32</dd>
+          <dt>Firmware</dt><dd class="mono">[fw_version]</dd>
+          <dt>Interval</dt><dd>60 s</dd>
+          <dt>Uptime</dt><dd>99.2% · last 7 days</dd>
+          <dt>MQTT topic</dt><dd class="mono" style="font-size:13px;word-break:break-all">site/[site_id]/kit/kit-01/telemetry</dd>
+        </dl>
+      </div>
+      <div style="flex:2 1 420px;display:flex;flex-direction:column;gap:12px">
+        <h3 style="margin:0;font-size:16px;font-weight:600">Sensor health</h3>
+        <div class="sensor"><span class="nm">BME280</span><span class="ds">Temp · humidity · pressure — primary</span><span class="tag t-ok">OK</span></div>
+        <div class="sensor"><span class="nm">DHT11</span><span class="ds">Temp · humidity — backup &amp; cross-check</span><span class="tag t-warn">DRIFT 0.8 °C</span></div>
+        <div class="sensor"><span class="nm">Anemometer</span><span class="ds">Wind speed · gust</span><span class="tag t-ok">OK</span></div>
+        <div class="sensor" style="background:transparent;border:1px dashed var(--input)"><span class="nm" style="color:var(--muted)">Rain gauge</span><span class="ds" style="color:var(--muted)">DFRobot SEN0575 — planned</span><span class="tag t-off">NOT FITTED</span></div>
+      </div>
+    </article>
+    <section aria-labelledby="qc-h" style="display:flex;flex-direction:column;gap:12px">
+      <h2 id="qc-h">Data quality · last 24 h</h2>
+      <div class="grid-auto">
+        <div class="card stat"><span class="label">READINGS RECEIVED</span><span class="n" style="font-size:26px">1,428 / 1,440</span></div>
+        <div class="card stat"><span class="label">SPIKES REMOVED</span><span class="n" style="font-size:26px">3</span></div>
+        <div class="card stat"><span class="label">STUCK SENSOR</span><span class="n" style="font-size:26px">None</span></div>
+        <div class="card stat"><span class="label">OFFLINE GAPS</span><span class="n" style="font-size:26px">1 · 9 min</span></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+// Sample alert data — replace with GET /api/alerts in the real React app
+const ALERTS = [
+  { when: '31 Oct · 14:00', hazard: 'Heat wave',  band: 'ORANGE', prob: '68%', email: 'Sent · 2 admins', outcome: 'Pending (window ends 17:00)' },
+  { when: '31 Oct · 14:00', hazard: 'High wind',  band: 'YELLOW', prob: '31%', email: '—',               outcome: 'Pending' },
+  { when: '30 Oct · 15:00', hazard: 'Heat wave',  band: 'RED',    prob: '82%', email: 'Sent · 2 admins', outcome: 'Happened · max 40.6 °C' },
+  { when: '30 Oct · 13:00', hazard: 'Heat wave',  band: 'YELLOW', prob: '38%', email: '—',               outcome: 'Escalated to Red' },
+  { when: '28 Oct · 18:00', hazard: 'High wind',  band: 'ORANGE', prob: '54%', email: 'Sent · 2 admins', outcome: 'Happened · gust 58 km/h' },
+  { when: '27 Oct · 16:00', hazard: 'Heavy rain', band: 'YELLOW', prob: '27%', email: '—',               outcome: 'Not checked · no rain gauge' },
+  { when: '26 Oct · 12:00', hazard: 'Heat wave',  band: 'YELLOW', prob: '35%', email: '—',               outcome: 'Did not happen' }
+];
+let filter = 'All';
+
+function renderAlerts() {
+  const chips = document.getElementById('chips');
+  chips.innerHTML = '';
+  ['All', 'Heat wave', 'High wind', 'Heavy rain'].forEach(h => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = h;
+    b.setAttribute('aria-pressed', String(h === filter));
+    b.onclick = () => { filter = h; renderAlerts(); };
+    chips.appendChild(b);
+  });
+  const body = document.getElementById('alert-rows');
+  body.innerHTML = '';
+  ALERTS.filter(a => filter === 'All' || a.hazard === filter).forEach(a => {
+    const tr = document.createElement('tr');
+    tr.innerHTML =
+      `<td class="mono" style="font-size:13px;white-space:nowrap">${a.when}</td>` +
+      `<td class="h">${a.hazard}</td>` +
+      `<td><span class="badge sm b-${a.band.toLowerCase()}">${a.band}</span></td>` +
+      `<td class="mono" style="color:var(--text)">${a.prob}</td>` +
+      `<td class="mono">KIT-01</td><td>${a.email}</td><td>${a.outcome}</td>`;
+    body.appendChild(tr);
+  });
+}
+
+// Simple hash router: #login, #dashboard, #alerts, #kits
+function route() {
+  const page = (location.hash || '#login').slice(1);
+  const isLogin = page === 'login' || !['dashboard', 'alerts', 'kits'].includes(page);
+  document.getElementById('login').classList.toggle('on', isLogin);
+  document.getElementById('app').classList.toggle('on', !isLogin);
+  document.querySelectorAll('main[data-page]').forEach(m => m.style.display = m.dataset.page === page ? 'flex' : 'none');
+  document.querySelectorAll('[data-nav]').forEach(a => {
+    if (a.dataset.nav === page) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+  });
+  window.scrollTo(0, 0);
+}
+
+// Range toggle on the dashboard (visual only)
+document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.seg button').forEach(x => x.classList.remove('on'));
+  b.classList.add('on');
+}));
+
+renderAlerts();
+window.addEventListener('hashchange', route);
+route();
+</script>
+</body>
+</html>

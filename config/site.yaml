@@ -1,0 +1,77 @@
+# Site configuration — everything specific to this site lives here.
+# Secrets (passwords, keys) go in .env, never in this file.
+# Requirements: FR-CFG-01. Design: docs/design/system_design_v1.md §4.1
+
+site:
+  name: "Karur Campus"
+  latitude: 10.96          # placeholder — replace with the exact campus coordinates
+  longitude: 78.08
+  elevation_m: 120
+  timezone: "Asia/Kolkata"
+  coastal: false           # false → heat threshold 40 °C; true → 37 °C
+
+kits:
+  - kit_id: "kit01"
+    description: "Block A rooftop"
+    latitude: 10.96
+    longitude: 78.08
+    anemometer_height_m: 3.0
+    enabled: true
+    notes: "Radiation shield fitted"
+
+hazards:
+  wind:
+    # Peak reported wind speed in the next 3 h, km/h (IMD gusty-wind categories)
+    levels: { yellow: 30, orange: 40, red: 60 }
+  heat:
+    abs_threshold_c: 40
+    coastal_abs_threshold_c: 37
+    departure_c: { yellow: 4.5, orange: 6.5 }   # above the normal daily max
+    red_abs_c: 45
+  rain:
+    enabled: false         # rain gauge not fitted — later version
+
+qc:
+  ranges:
+    temp_c: [0, 55]
+    hum_pct: [0, 100]
+    pressure_hpa: [950, 1050]
+    wind_ms: [0, 60]
+  spike_per_min:           # max allowed change per minute between readings
+    temp_c: 1.0
+    hum_pct: 4.0
+    pressure_hpa: 0.6
+  stuck_minutes: 60
+  fusion_mismatch: { temp_c: 3.0, hum_pct: 10.0 }
+  future_ts_tolerance_min: 10
+
+prediction:
+  run_cron_minute: 0
+  horizon_hours: 3
+  history_hours: 48
+  show_level_cutoff: 0.50
+
+data_sufficiency:
+  max_interp_gap_min: 30
+  max_missing_share_24h: 0.25
+  require_data_within_min: 60
+
+kit_status:
+  offline_after_min: 10
+
+alerts:
+  enabled: true
+  levels: ["orange", "red"]
+  cooldown_hours: 3
+
+normals:
+  # PROVISIONAL approximate monthly normals (Jan..Dec) for Karur / Tiruchirappalli.
+  # To be verified against IMD sources before training (open decision D8).
+  source: "Provisional estimate — verify against IMD normals (D8)"
+  provisional: true
+  tmax_c:         [30.0, 32.5, 35.5, 37.5, 38.0, 36.5, 35.5, 35.0, 34.5, 32.5, 30.0, 29.5]
+  tmin_c:         [20.0, 21.0, 23.0, 25.5, 26.5, 26.5, 25.5, 25.0, 24.5, 23.5, 22.0, 20.5]
+  rh_morning_pct: [80, 75, 70, 70, 65, 62, 65, 68, 72, 80, 84, 83]
+  rh_evening_pct: [50, 42, 38, 42, 45, 45, 48, 50, 52, 62, 66, 60]
+  wind_kmh:       [6, 6, 7, 8, 12, 18, 18, 17, 13, 7, 6, 6]
+  mslp_hpa:       [1013, 1012, 1010, 1008, 1006, 1006, 1006, 1007, 1008, 1010, 1011, 1012]
