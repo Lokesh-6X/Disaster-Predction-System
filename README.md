@@ -19,8 +19,8 @@ v1 is a prototype for one site (Karur) and one kit; its models are trained on sy
 |---|---|
 | 0. Local environment | ✅ |
 | 1. Foundation (config, MQTT contract, backend skeleton, broker) | ✅ |
-| 2. Ingestion | ⏳ next |
-| 3. Synthetic data + ML | — |
+| 2. Ingestion (MQTT → QC → PostgreSQL, kit status, simulator) | ✅ |
+| 3. Synthetic data + ML | ⏳ next |
 | 4. Inference + alerts | — |
 | 5. API + dashboard | — |
 | 6. Real kit | — |
@@ -57,7 +57,7 @@ Site settings (location, kit, thresholds, alerts) are in `config/site.yaml`; syn
 ```powershell
 .\scripts\init_db.ps1
 ```
-Creates the database user and database from `.env`. It asks for the PostgreSQL superuser (`postgres`) password; the password is not stored.
+Creates the database user and database from `.env`, then applies the schema migrations. It asks for the PostgreSQL superuser (`postgres`) password; the password is not stored. After pulling new migrations, run `.\scripts\init_db.ps1 -MigrateOnly` (no superuser needed).
 
 **4. MQTT broker**
 ```powershell
@@ -72,7 +72,23 @@ Use a separate PowerShell window for each:
 ```powershell
 .\scripts\start_broker.ps1        # MQTT broker on localhost:1884
 .\scripts\start_backend.ps1       # API on http://127.0.0.1:8000  (docs: /docs, health: /api/health)
+.\scripts\start_simulator.ps1     # simulated kit01, one reading every 5 min
 ```
+
+On first start the backend syncs kits from `site.yaml` and creates the admin user from `.env`. Logs go to the console and `logs\backend.log`.
+
+### Kit simulator options
+
+| Example | Effect |
+|---|---|
+| `start_simulator.ps1 --interval 10s` | Faster readings for testing |
+| `start_simulator.ps1 --backfill-hours 48 --speed 600` | Fill the last 48 h quickly, then continue live |
+| `start_simulator.ps1 --faults` | Occasional spikes and BME280 failures (tests QC and DHT11 fallback) |
+| `start_simulator.ps1 --no-ts` | Omit timestamps (server uses arrival time) |
+| `start_simulator.ps1 --drop-after 3` | Vanish after 3 readings — the broker's Last-Will marks the kit offline |
+| `start_simulator.ps1 --count 10` | Stop cleanly after 10 readings |
+
+Ctrl+C stops it cleanly (status `offline`).
 
 ## Tests and lint
 
@@ -80,6 +96,8 @@ Use a separate PowerShell window for each:
 .venv\Scripts\python.exe -m pytest
 .venv\Scripts\python.exe -m ruff check .
 ```
+
+Database tests create and drop a temporary schema in the local database; they are skipped if PostgreSQL or `.env` is not available.
 
 ## Project layout
 
@@ -102,3 +120,6 @@ docs/          analysis, requirements, design, plan, MQTT contract
 | `Connection Refused: not authorised` from MQTT | Use port 1884 and the usernames/passwords from `.env`; re-run `scripts\setup_broker.ps1` after changing them |
 | Port 1884 already in use | Another broker instance is running; close it or change `MQTT_PORT` in `.env` and re-run `setup_broker.ps1` |
 | `psql not found` | Add `C:\Program Files\PostgreSQL\17\bin` to PATH |
+| `Database not ready ... Retrying` in the backend log | Start PostgreSQL and run `scripts\init_db.ps1` (or `-MigrateOnly`) |
+| Health shows `"mqtt": "disconnected"` | Start the broker with `scripts\start_broker.ps1` |
+| Reading rejected: timestamp in the future | The kit's clock is ahead by more than 10 min |

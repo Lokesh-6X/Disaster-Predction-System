@@ -1,4 +1,8 @@
-"""Smoke test: the app starts with valid configuration and answers /api/health."""
+"""Smoke test: the app starts with valid configuration and answers /api/health.
+
+The test .env has made-up credentials, so the database and broker are reported
+as unavailable — the app must still start and answer.
+"""
 
 from fastapi.testclient import TestClient
 
@@ -29,7 +33,9 @@ def test_health(monkeypatch, tmp_path):
             response = client.get("/api/health")
         assert response.status_code == 200
         body = response.json()
-        assert body["status"] == "ok"
+        assert body["status"] == "degraded"
         assert body["site"] == "Karur Campus"
+        assert body["components"]["database"] == "down"
+        assert body["components"]["mqtt"] == "disconnected"
     finally:
         settings.get_config.cache_clear()
