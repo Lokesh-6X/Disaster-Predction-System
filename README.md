@@ -21,8 +21,8 @@ v1 is a prototype for one site (Karur) and one kit; its models are trained on sy
 | 1. Foundation (config, MQTT contract, backend skeleton, broker) | ✅ |
 | 2. Ingestion (MQTT → QC → PostgreSQL, kit status, simulator) | ✅ |
 | 3. Synthetic data + ML (generator, labels, features, 6 XGBoost models, registry) | ✅ |
-| 4. Inference + alerts | ⏳ next |
-| 5. API + dashboard | — |
+| 4. Inference + alerts (hourly scheduler, predictions, email alerts) | ✅ |
+| 5. API + dashboard | ⏳ next |
 | 6. Real kit | — |
 
 ---
@@ -93,9 +93,29 @@ On first start the backend syncs kits from `site.yaml` and creates the admin use
 | `start_simulator.ps1 --no-ts` | Omit timestamps (server uses arrival time) |
 | `start_simulator.ps1 --drop-after 3` | Vanish after 3 readings — the broker's Last-Will marks the kit offline |
 | `start_simulator.ps1 --count 10` | Stop cleanly after 10 readings |
-| `start_simulator.ps1 --backfill-hours 48 --speed 600 --force wind:red` | Fill history, then start a Red wind event at the present time (also `heat:yellow`/`orange`/`red`) |
+| `start_simulator.ps1 --backfill-hours 48 --speed 100000 --count 576 --force wind:orange --force-minutes-ago 200` | Fill 48 h of history containing a sustained Orange wind spell that started 200 min ago, then stop (see [Alerts](#predictions-and-alerts)) |
 
-The simulator uses the same weather model as the training data. Ctrl+C stops it cleanly (status `offline`).
+The simulator uses the same weather model as the training data. `--force wind:LEVEL` builds up over an hour and holds for 4 more; `--force heat:LEVEL` ramps up and holds for 3 hours. Ctrl+C stops it cleanly (status `offline`).
+
+## Predictions and alerts
+
+The backend predicts every hour at **HH:00:30 IST** (`/api/health` shows the next run). Orange and Red risk is emailed to `ADMIN_EMAIL`; repeats of the same or a lower level for that hazard are paused for 3 hours, and a higher level is sent at once.
+
+**Email settings (`.env`):**
+
+| Use | Settings |
+|---|---|
+| Local test (default) | `SMTP_HOST=localhost`, `SMTP_PORT=1025`, `SMTP_STARTTLS=false`; run `.venv\Scripts\python.exe tools\mail_sink.py` — emails are saved to `logs\mail\*.eml` |
+| Gmail | `SMTP_HOST=smtp.gmail.com`, `SMTP_PORT=587`, `SMTP_STARTTLS=true`, `SMTP_USER=<gmail address>`, `SMTP_PASSWORD=<16-character app password>`, `SMTP_FROM=<same gmail address>` |
+
+Restart the backend after changing `.env`.
+
+**Try an alert now** (broker, backend and mail server running; fresh database readings):
+```powershell
+.\scripts\start_simulator.ps1 --backfill-hours 48 --speed 100000 --count 576 --force wind:orange --force-minutes-ago 200
+Invoke-RestMethod -Method Post http://127.0.0.1:8000/api/predictions/run
+```
+The run endpoint predicts for the current hour immediately (it is protected by login from Phase 5).
 
 ## ML pipeline
 
@@ -142,4 +162,7 @@ docs/          analysis, requirements, design, plan, MQTT contract
 | `psql not found` | Add `C:\Program Files\PostgreSQL\17\bin` to PATH |
 | `Database not ready ... Retrying` in the backend log | Start PostgreSQL and run `scripts\init_db.ps1` (or `-MigrateOnly`) |
 | Health shows `"mqtt": "disconnected"` | Start the broker with `scripts\start_broker.ps1` |
+| Health shows `"model": "missing"` | Run `.venv\Scripts\python.exe -m ml.cli all`, then restart the backend |
+| Predictions say `insufficient_data` | Less than 75 % of the last 24 h, or no reading in the last hour — check the kit/simulator |
+| Alert `failed` in the database | Check the SMTP settings; with Gmail use an app password, not the account password |
 | Reading rejected: timestamp in the future | The kit's clock is ahead by more than 10 min |

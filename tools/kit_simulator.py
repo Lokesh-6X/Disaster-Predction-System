@@ -16,8 +16,11 @@ times faster until it catches up with real time, then continues live. (The
 server rejects timestamps in the future, so the clock never runs ahead.)
 
 --force HAZARD:LEVEL starts a hazard when the simulated clock reaches the
-present: wind reaches the level's speed for an hour; heat ramps up (0.5 °C/min)
-to the level's temperature and stays there for 3 hours.
+present: wind builds up over an hour to the level's speed and holds for 4 more
+hours; heat ramps up (0.5 °C/min) to the level's temperature and stays there
+for 3 hours. Hourly predictions only use readings from before the hour, so to
+see the effect straight away start the hazard in the backfilled past, e.g.
+--backfill-hours 48 --force wind:orange --force-minutes-ago 150.
 """
 
 import argparse
@@ -50,7 +53,10 @@ from ml.synthetic.generator import Scales, generate_truth, sensor_layer  # noqa:
 
 FW_VERSION = "sim-0.2"
 LEVELS = ("yellow", "orange", "red")
-WIND_FORCE = timedelta(hours=1)
+# Forced wind is a sustained spell (like the monsoon spells in the training data),
+# not a short storm burst: the models learned that a sudden spike soon calms down.
+WIND_FORCE = timedelta(hours=5)
+WIND_RAMP_MIN = 60
 HEAT_FORCE = timedelta(hours=3)
 HEAT_RAMP_C_PER_MIN = 0.5  # stays under the QC spike limit
 WIND_FORCE_MARGIN = 1.1  # forced wind sits 10 % above the level's threshold
@@ -147,7 +153,7 @@ class SyntheticWeather:
         minutes = elapsed.total_seconds() / 60
         if hazard == "wind" and elapsed <= WIND_FORCE:
             target_ms = getattr(self._site.hazards.wind.levels, level) * WIND_FORCE_MARGIN / 3.6
-            ramp = min(1.0, minutes / 5)
+            ramp = min(1.0, minutes / WIND_RAMP_MIN)
             noise = self._rng.uniform(0.97, 1.05)
             values["wind_speed_ms"] = round(
                 max(values["wind_speed_ms"], target_ms * ramp * noise), 1
@@ -192,6 +198,12 @@ def main() -> None:
         "--force", type=parse_force, default=None, help="start a hazard, e.g. wind:red, heat:orange"
     )
     parser.add_argument(
+        "--force-minutes-ago",
+        type=float,
+        default=0.0,
+        help="start the forced hazard this many minutes before now (needs --backfill-hours)",
+    )
+    parser.add_argument(
         "--drop-after", type=int, default=0, help="vanish without disconnecting after N readings"
     )
     parser.add_argument("--seed", type=int, default=None)
@@ -216,7 +228,8 @@ def main() -> None:
 
     now = datetime.now(UTC).replace(microsecond=0)
     seed = args.seed if args.seed is not None else random.randrange(1_000_000)
-    model = SyntheticWeather(site, syn, args.kit, seed, args.faults, args.force, force_start=now)
+    force_start = now - timedelta(minutes=args.force_minutes_ago)
+    model = SyntheticWeather(site, syn, args.kit, seed, args.faults, args.force, force_start)
     telemetry_topic = f"weather/kit/{args.kit}/telemetry"
     status_topic = f"weather/kit/{args.kit}/status"
 
@@ -231,7 +244,7 @@ def main() -> None:
         f"Connected to {host}:{port} as '{args.kit}'; publishing to {telemetry_topic} (seed {seed})"
     )
     if args.force:
-        print(f"Forced hazard {args.force[0]}:{args.force[1]} starts at {now:%H:%M} UTC")
+        print(f"Forced hazard {args.force[0]}:{args.force[1]} starts at {force_start:%H:%M} UTC")
 
     sim_time = now - timedelta(hours=args.backfill_hours)
     sent = 0

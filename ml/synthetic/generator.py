@@ -3,8 +3,8 @@
 Three layers:
 
 1. **Truth** — the weather itself: daily cycles and seasons from the climate
-   normals, day-to-day variability, heat spells, monsoon wind spells and
-   pre-monsoon storms.
+   normals, day-to-day variability, heat spells, monsoon wind spells,
+   pre-monsoon storms and north-east-monsoon depressions.
 2. **Sensors** — what the kit would report: BME280 noise, DHT11 bias and
    whole-number rounding, anemometer noise.
 3. **Faults** — spikes, stuck values, BME280 failures, gaps and offline periods.
@@ -101,6 +101,7 @@ def _place_events(rng, syn, days: pd.DatetimeIndex, scales: Scales, tz) -> dict:
     heat_anom = np.zeros(n_days)
     wind_boost = np.ones(n_days)
     storms: list[dict] = []
+    depressions: list[dict] = []
     events: list[dict] = []
 
     def day_index(year: int, doy: int) -> int:
@@ -155,7 +156,36 @@ def _place_events(rng, syn, days: pd.DatetimeIndex, scales: Scales, tz) -> dict:
                 {"type": "storm", "start": onset, "days": 0, "size": storm["wind_peak_ms"] * 3.6}
             )
 
-    return {"heat_anom": heat_anom, "wind_boost": wind_boost, "storms": storms, "events": events}
+        for _ in range(round(syn.events.depressions_per_year)):
+            index = day_index(year, int(rng.integers(274, 362)))  # October–December
+            if not 0 <= index < n_days:
+                continue
+            start = days[index] + pd.Timedelta(hours=float(rng.uniform(0, 24)))
+            depression = {
+                "start": start.tz_convert("UTC"),
+                "hours": rng.uniform(24, 48),
+                "wind_peak_ms": rng.uniform(11.0, 20.0),  # 40–72 km/h
+                "pressure_drop": rng.uniform(4.0, 8.0),
+                "dewpoint_rise": rng.uniform(1.0, 2.5),
+                "temp_drop": rng.uniform(1.0, 3.0),  # cloud cover
+            }
+            depressions.append(depression)
+            events.append(
+                {
+                    "type": "depression",
+                    "start": start,
+                    "days": round(depression["hours"] / 24, 1),
+                    "size": depression["wind_peak_ms"] * 3.6,
+                }
+            )
+
+    return {
+        "heat_anom": heat_anom,
+        "wind_boost": wind_boost,
+        "storms": storms,
+        "depressions": depressions,
+        "events": events,
+    }
 
 
 def _apply_storms(storms, times: pd.DatetimeIndex, temp, dew, pressure, wind, rng) -> None:
@@ -193,6 +223,29 @@ def _apply_storms(storms, times: pd.DatetimeIndex, temp, dew, pressure, wind, rn
         )
         burst = s["wind_peak_ms"] * gust * rng.uniform(0.85, 1.0, len(m))
         wind[lo:hi] = np.maximum(wind[lo:hi], burst)
+
+
+DEPRESSION_RAMP_H = 6
+
+
+def _apply_depressions(depressions, times, temp, dew, pressure, wind, rng) -> None:
+    """NE-monsoon depressions: wind and moisture build over hours and last 1–2 days."""
+    t_ns = times.as_unit("ns").asi8
+    for d in depressions:
+        begin = d["start"].value
+        end = begin + d["hours"] * 3600e9
+        if t_ns[-1] < begin or t_ns[0] > end:
+            continue
+        lo, hi = np.searchsorted(t_ns, begin), np.searchsorted(t_ns, end)
+        h = (t_ns[lo:hi] - begin) / 3600e9  # hours from start
+        strength = np.clip(h / DEPRESSION_RAMP_H, 0, 1) * np.clip(
+            (d["hours"] - h) / DEPRESSION_RAMP_H, 0, 1
+        )
+        pressure[lo:hi] -= d["pressure_drop"] * strength
+        temp[lo:hi] -= d["temp_drop"] * strength
+        dew[lo:hi] += d["dewpoint_rise"] * strength
+        sustained = d["wind_peak_ms"] * strength * rng.gamma(20, 0.05, len(h))
+        wind[lo:hi] = np.maximum(wind[lo:hi], sustained)
 
 
 def generate_truth(
@@ -264,6 +317,7 @@ def generate_truth(
     )
 
     _apply_storms(placed["storms"], times, temp, dew, pressure, wind, rng)
+    _apply_depressions(placed["depressions"], times, temp, dew, pressure, wind, rng)
     dew = np.minimum(dew, temp - 0.1)
 
     truth = pd.DataFrame(

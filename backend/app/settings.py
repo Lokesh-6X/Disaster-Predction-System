@@ -261,6 +261,7 @@ class SyntheticEvents(_Strict):
     heat_spells_per_year: float = Field(ge=0)
     wind_spells_per_year: float = Field(ge=0)
     storms_per_year: float = Field(ge=0)
+    depressions_per_year: float = Field(ge=0)
 
 
 class SyntheticFaults(_Strict):

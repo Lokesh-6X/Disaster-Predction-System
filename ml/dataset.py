@@ -21,7 +21,7 @@ def build_dataset(readings: pd.DataFrame, site) -> pd.DataFrame:
         readings, QcLimits.from_config(site.qc), site.qc.fusion_mismatch.model_dump()
     )
     grid = to_grid(checked, site.data_sufficiency.max_interp_gap_min)
-    hourly = to_hourly(grid)
+    hourly = to_hourly(grid, site.site.timezone)
     features = build_features(hourly, site)
     labels = make_labels(grid, site, site.prediction.horizon_hours)
 

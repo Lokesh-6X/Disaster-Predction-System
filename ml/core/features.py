@@ -1,6 +1,6 @@
 """Model features from hourly aggregates (FR-ML-02, design §9.4).
 
-Rows are indexed by prediction time *t* (UTC hour boundary) and use only the
+Rows are indexed by prediction time *t* (site-local hour boundary, stored in UTC) and use only the
 hours ending at or before *t*, so there is no look-ahead. Training and live
 inference both call :func:`build_features`.
 """

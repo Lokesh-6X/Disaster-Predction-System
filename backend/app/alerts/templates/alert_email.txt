@@ -1,0 +1,30 @@
+{{ level }} {{ hazard | upper }} RISK — {{ site_name }}
+
+{{ level_name }} is likely at {{ site_name }} in the next {{ horizon_hours }} hours.
+
+Valid until:  {{ valid_until }}
+Predicted at: {{ run_at }}
+Kit:          {{ kit_id }}{% if kit_description %} ({{ kit_description }}){% endif %}
+
+
+Probability of each level in the next {{ horizon_hours }} hours:
+{% for item in levels %}
+  {{ "%-7s"|format(item.name) }} {{ "%-26s"|format(item.threshold) }} {{ "%3d"|format(item.percent) }} %
+{% endfor %}
+
+{% if reading %}
+Latest reading ({{ reading.time }}):
+  Temperature  {{ reading.temp }}
+  Humidity     {{ reading.hum }}
+  Pressure     {{ reading.pressure }}
+  Wind speed   {{ reading.wind }}
+
+{% endif %}
+{% if fallback_used %}
+Note: the backup temperature/humidity sensor (DHT11) was used in the last 24 hours.
+{% endif %}
+Model {{ model_version }}{% if synthetic_model %} — trained on synthetic data; treat predictions as indicative only{% endif %}.
+
+Dashboard: {{ dashboard_url }}
+
+You receive this because you are the site administrator. Further {{ hazard | lower }} alerts at this level or lower are paused for {{ cooldown_hours }} hours; a higher level is sent immediately.

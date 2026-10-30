@@ -1,8 +1,8 @@
 """FastAPI application: start-up/shut-down and top-level routes.
 
-Start-up waits for the database (syncs kits, creates the admin, loads QC
-history), then starts the MQTT subscriber and the kit watchdog as background
-tasks. The scheduler is added in Phase 4.
+Start-up loads the active model and starts the hourly prediction scheduler,
+then waits for the database (syncs kits, creates the admin, loads QC history)
+and starts the MQTT subscriber and the kit watchdog as background tasks.
 """
 
 import asyncio
@@ -13,7 +13,13 @@ from fastapi import FastAPI
 from sqlalchemy.exc import SQLAlchemyError
 
 from backend.app import __version__
+from backend.app.alerts.emailer import Emailer
+from backend.app.alerts.engine import AlertEngine
+from backend.app.api import predictions
 from backend.app.db import Database
+from backend.app.inference.model_store import ModelStore
+from backend.app.inference.runner import InferenceRunner
+from backend.app.inference.scheduler import PredictionScheduler
 from backend.app.ingest.kit_status import KitStatusService
 from backend.app.ingest.pipeline import IngestPipeline
 from backend.app.mqtt.subscriber import MqttSubscriber
@@ -77,6 +83,20 @@ async def lifespan(app: FastAPI):
     subscriber = MqttSubscriber(
         config.env, pipeline.handle_telemetry, kit_status.handle_status_message
     )
+    model_store = ModelStore()
+    model_store.load()
+    alert_engine = AlertEngine(
+        config.site,
+        config.env,
+        database.session_factory,
+        hub,
+        Emailer(config.env),
+        is_synthetic_model=lambda: bool(
+            model_store.loaded and model_store.loaded.metadata.get("data_source") == "synthetic"
+        ),
+    )
+    runner = InferenceRunner(config.site, database.session_factory, model_store, hub, alert_engine)
+    scheduler = PredictionScheduler(config.site, runner)
 
     app.state.config = config
     app.state.database = database
@@ -84,11 +104,16 @@ async def lifespan(app: FastAPI):
     app.state.kit_status = kit_status
     app.state.pipeline = pipeline
     app.state.subscriber = subscriber
+    app.state.model_store = model_store
+    app.state.runner = runner
+    app.state.scheduler = scheduler
 
+    scheduler.start()
     services = asyncio.create_task(_run_services(app), name="services")
     try:
         yield
     finally:
+        scheduler.shutdown()
         services.cancel()
         await asyncio.gather(services, return_exceptions=True)
         await database.dispose()
@@ -100,6 +125,7 @@ app = FastAPI(
     version=__version__,
     lifespan=lifespan,
 )
+app.include_router(predictions.router)
 
 
 @app.get("/api/health")
@@ -107,13 +133,19 @@ async def health() -> dict:
     state = app.state
     database_ok = await state.database.ping()
     mqtt_ok = state.subscriber.connected
+    scheduler_ok = state.scheduler.running
+    model = state.model_store.version
+    healthy = database_ok and mqtt_ok and scheduler_ok and model is not None
     return {
-        "status": "ok" if database_ok and mqtt_ok else "degraded",
+        "status": "ok" if healthy else "degraded",
         "version": __version__,
         "site": state.config.site.site.name,
         "components": {
             "database": "ok" if database_ok else "down",
             "mqtt": "connected" if mqtt_ok else "disconnected",
-            "scheduler": "not_started",
+            "scheduler": "running" if scheduler_ok else "stopped",
+            "model": model or "missing",
         },
+        "next_prediction": state.scheduler.next_run_time,
+        "last_prediction_run": state.runner.last_run,
     }

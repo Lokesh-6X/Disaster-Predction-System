@@ -14,6 +14,7 @@ from ml.core.normals import DailyNormals, daily_from_monthly
 SITE = load_site_config()
 NORMALS = DailyNormals(SITE.normals)
 UTC = "UTC"
+TZ = SITE.site.timezone
 
 
 # ------------------------------------------------------------------ normals
@@ -68,9 +69,9 @@ def test_flagged_single_sensor_values_are_removed():
 
 
 def test_hourly_aggregates():
-    times = pd.date_range("2026-05-01 00:00", periods=24, freq="5min", tz=UTC)
+    times = pd.date_range("2026-05-01 00:30", periods=24, freq="5min", tz=UTC)  # 06:00 IST
     temp = np.arange(24, dtype=float)
-    hourly = to_hourly(to_grid(readings_frame(times, temp_c=temp), 30))
+    hourly = to_hourly(to_grid(readings_frame(times, temp_c=temp), 30), TZ)
     first = hourly.iloc[0]
     assert (first["temp_min"], first["temp_max"], first["temp_mean"]) == (0, 11, 5.5)
     assert first["n_observed"] == 12
@@ -106,7 +107,7 @@ def labels_with(grid: pd.DataFrame, minute: int, **values) -> pd.Series:
     [(29.9, (0, 0, 0)), (30.1, (1, 0, 0)), (40.1, (1, 1, 0)), (59.9, (1, 1, 0)), (60.1, (1, 1, 1))],
 )
 def test_wind_label_boundaries(kmh, expected):
-    labels = labels_with(label_grid("2026-07-01 06:00"), 60, wind_speed_ms=kmh / 3.6)
+    labels = labels_with(label_grid("2026-07-01 06:30"), 60, wind_speed_ms=kmh / 3.6)
     assert (labels["wind_yellow"], labels["wind_orange"], labels["wind_red"]) == expected
 
 
@@ -116,7 +117,7 @@ def heat_labels(start: str, temp: float) -> tuple:
 
 
 def test_heat_label_boundaries_in_may():
-    start = "2026-05-15 06:00"  # 11:30 IST
+    start = "2026-05-15 06:30"  # 12:00 IST
     normal = float(
         NORMALS.tmax_for(pd.Timestamp(start).tz_localize(UTC).tz_convert("Asia/Kolkata").dayofyear)
     )
@@ -129,17 +130,17 @@ def test_heat_label_boundaries_in_may():
 
 def test_heat_needs_forty_degrees_even_with_large_departure():
     # January normal max ≈ 30.7 °C: 37 °C is +6 °C but below the 40 °C floor
-    assert heat_labels("2026-01-15 06:00", 37.0) == (0, 0, 0)
+    assert heat_labels("2026-01-15 06:30", 37.0) == (0, 0, 0)
 
 
 def test_label_window_excludes_t_and_includes_t_plus_three_hours():
-    assert labels_with(label_grid("2026-07-01 06:00"), 0, wind_speed_ms=20)["wind_yellow"] == 0
-    assert labels_with(label_grid("2026-07-01 06:00"), 180, wind_speed_ms=20)["wind_yellow"] == 1
-    assert labels_with(label_grid("2026-07-01 06:00"), 185, wind_speed_ms=20)["wind_yellow"] == 0
+    assert labels_with(label_grid("2026-07-01 06:30"), 0, wind_speed_ms=20)["wind_yellow"] == 0
+    assert labels_with(label_grid("2026-07-01 06:30"), 180, wind_speed_ms=20)["wind_yellow"] == 1
+    assert labels_with(label_grid("2026-07-01 06:30"), 185, wind_speed_ms=20)["wind_yellow"] == 0
 
 
 def test_label_is_missing_when_window_has_little_data():
-    grid = label_grid("2026-07-01 06:00")
+    grid = label_grid("2026-07-01 06:30")
     grid.iloc[1:20, :] = np.nan  # 19 of 36 window slots missing
     assert np.isnan(make_labels(grid, SITE).iloc[0]["wind_yellow"])
 
@@ -150,7 +151,7 @@ def test_label_is_missing_when_window_has_little_data():
 def hourly_frame(hours: int = 72) -> pd.DataFrame:
     times = pd.date_range("2026-05-01 00:00", periods=hours * 12, freq="5min", tz=UTC)
     temp = 30 + 5 * np.sin(np.arange(len(times)) / 50)
-    return to_hourly(to_grid(readings_frame(times, temp_c=temp), 30))
+    return to_hourly(to_grid(readings_frame(times, temp_c=temp), 30), TZ)
 
 
 def test_feature_columns_match_feature_names():

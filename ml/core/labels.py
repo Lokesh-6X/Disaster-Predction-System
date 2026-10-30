@@ -1,7 +1,7 @@
 """Training labels: will a hazard level be reached in the next 3 hours? (FR-ML-01, design §9.3)
 
-Labels are cumulative ("this level or worse") and computed for every hour
-boundary *t* from the 5-min grid slots in (t, t + horizon].
+Labels are cumulative ("this level or worse") and computed for every site-local
+hour boundary *t* from the 5-min grid slots in (t, t + horizon].
 """
 
 from __future__ import annotations
@@ -32,7 +32,7 @@ def _forward_max(values: pd.Series, window: int, min_periods: int) -> np.ndarray
 
 
 def make_labels(grid: pd.DataFrame, site, horizon_hours: int = 3) -> pd.DataFrame:
-    """Labels indexed by prediction time *t* (UTC hour boundary).
+    """Labels indexed by prediction time *t* (site-local hour boundary, stored in UTC).
 
     ``grid`` is the 5-min grid from :func:`ml.core.aggregate.to_grid`. A label
     is NaN when less than 75 % of its window has data.
@@ -45,7 +45,8 @@ def make_labels(grid: pd.DataFrame, site, horizon_hours: int = 3) -> pd.DataFram
     ).shift(-1)
     tmax = pd.Series(_forward_max(grid["temp_c"], window, min_periods), index=grid.index).shift(-1)
 
-    hourly = grid.index[grid.index.minute == 0]
+    local = grid.index.tz_convert(ZoneInfo(site.site.timezone))
+    hourly = grid.index[local.minute == 0]  # site-local hour boundaries
     peak_wind_kmh = peak_wind_kmh.reindex(hourly)
     tmax = tmax.reindex(hourly)
 

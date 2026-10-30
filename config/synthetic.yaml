@@ -12,6 +12,7 @@ events:
   heat_spells_per_year: 4        # mainly Apr–May
   wind_spells_per_year: 10       # mainly Jun–Sep
   storms_per_year: 8             # Mar–May afternoons
+  depressions_per_year: 2        # Oct–Dec NE-monsoon depressions: 1–2 days of building wind
 
 faults:
   enabled: true

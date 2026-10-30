@@ -75,9 +75,18 @@ def to_grid(
     return grid
 
 
-def to_hourly(grid: pd.DataFrame) -> pd.DataFrame:
-    """Hourly aggregates indexed by hour start (UTC), on a complete hourly index."""
-    hours = grid.groupby(grid.index.floor("h"))
+def local_hour_start(index: pd.DatetimeIndex, timezone: str) -> pd.DatetimeIndex:
+    """Start of the site-local clock hour containing each time, as UTC.
+
+    Hours follow the site's clock (e.g. IST 14:00–15:00 = UTC 08:30–09:30) so
+    predictions run "at 14:00" line up with what the admin sees.
+    """
+    return index.tz_convert(timezone).floor("h").tz_convert("UTC")
+
+
+def to_hourly(grid: pd.DataFrame, timezone: str) -> pd.DataFrame:
+    """Hourly aggregates indexed by local hour start (in UTC), on a complete hourly index."""
+    hours = grid.groupby(local_hour_start(grid.index, timezone))
     hourly = pd.DataFrame(
         {
             "temp_mean": hours["temp_c"].mean(),

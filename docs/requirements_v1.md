@@ -255,6 +255,7 @@ The generator produces rows with exactly the MQTT payload fields (plus `kit_id`)
 - Heat spells mainly in April–May.
 - Steady strong-wind periods mainly in Jun–Sep.
 - Occasional pre-monsoon storm events: pressure dip, humidity jump, temperature drop, wind spike.
+- North-east-monsoon depressions in October–December: wind building over hours and lasting 1–2 days (added so the models also respond to strong wind outside the June–September season).
 - Combined hazard hours ≈ 3–5 % of all hours.
 
 ### FR-SYN-05 — Sensor behaviour (Must)

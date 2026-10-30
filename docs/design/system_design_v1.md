@@ -467,7 +467,8 @@ The same `tmax_normal` is used for heat labels and the departure feature.
 |---|---|---|
 | Heat spell | Mainly Apr–May; 3–7 days | `spell_anom` +3 to +7 °C on Tmax, ramp up/down over a day; RH slightly lower |
 | Wind spell | Mainly Jun–Sep; 1–5 days | Wind ×1.5–2.5, strongest in afternoons |
-| Pre-monsoon storm | Mar–May, 14:00–19:00 | 60–90 min before: pressure −1.5 to −3 hPa; at onset: temperature −5 to −8 °C, RH +20–30 %, pressure jump +1–2 hPa, wind spike to 12–20 m/s for 15–45 min, then recovery over 1–3 h |
+| Pre-monsoon storm | Mar–May, 14:00–19:00 | 60–90 min before: pressure −1.5 to −3 hPa; at onset: temperature −5 to −8 °C over 20 min, dew point +1–3 °C, pressure jump +1–2 hPa, wind spike to 15–22 m/s for 15–45 min, then recovery over 1–3 h |
+| NE-monsoon depression | Oct–Dec, any hour; 24–48 h | Builds over 6 h and eases over 6 h: wind up to 11–20 m/s (40–72 km/h), pressure −4 to −8 hPa, temperature −1 to −3 °C, dew point +1–2.5 °C. Without these, the models learned that strong wind never happens outside Jun–Sep and ignored the anemometer in other months |
 
 Event counts/amplitudes come from `synthetic.yaml`. After generation, the generator computes the label shares using `ml/core/labels.py`, and if the combined hazard-hour share is outside the target range (3–5 %), it rescales event amplitudes and regenerates (max 5 iterations, deterministic with the seed). Achieved shares are written to `<output>.meta.json`.
 
@@ -849,7 +850,7 @@ Logging: Python `logging`, console + `logs/backend.log` (rotating, 5 × 5 MB), f
 | Backend | `http://localhost:8000` (docs at `/docs`) | `scripts/start_backend.ps1` |
 | Frontend | `http://localhost:5173` | `scripts/start_frontend.ps1` |
 | Simulator | — | `scripts/start_simulator.ps1` |
-| Mailpit (optional) | SMTP `localhost:1025`, UI `localhost:8025` | `mailpit.exe` |
+| Test mail server (optional) | SMTP `localhost:1025`, saves to `logs/mail/` | `tools/mail_sink.py` (or Mailpit) |
 
 First-time setup (detailed in README): install Python 3.11+, Node.js 20+, PostgreSQL, Mosquitto → create DB → copy `.env.example` to `.env` → `scripts/init_db.ps1` (Alembic migrations) → `python -m ml.cli generate build train evaluate activate v1` → start backend, frontend, simulator.
 
