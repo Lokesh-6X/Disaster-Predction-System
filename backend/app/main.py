@@ -10,12 +10,13 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.exc import SQLAlchemyError
 
 from backend.app import __version__
 from backend.app.alerts.emailer import Emailer
 from backend.app.alerts.engine import AlertEngine
-from backend.app.api import predictions
+from backend.app.api import alerts, auth, kits, predictions, readings, system, ws
 from backend.app.db import Database
 from backend.app.inference.model_store import ModelStore
 from backend.app.inference.runner import InferenceRunner
@@ -23,8 +24,8 @@ from backend.app.inference.scheduler import PredictionScheduler
 from backend.app.ingest.kit_status import KitStatusService
 from backend.app.ingest.pipeline import IngestPipeline
 from backend.app.mqtt.subscriber import MqttSubscriber
-from backend.app.security import ensure_admin
-from backend.app.settings import AppConfig, get_config
+from backend.app.security import LoginRateLimiter, ensure_admin
+from backend.app.settings import AppConfig, ConfigError, get_config, load_env_settings
 from backend.app.ws.hub import WebSocketHub
 
 log = logging.getLogger(__name__)
@@ -107,6 +108,7 @@ async def lifespan(app: FastAPI):
     app.state.model_store = model_store
     app.state.runner = runner
     app.state.scheduler = scheduler
+    app.state.login_limiter = LoginRateLimiter()
 
     scheduler.start()
     services = asyncio.create_task(_run_services(app), name="services")
@@ -125,7 +127,24 @@ app = FastAPI(
     version=__version__,
     lifespan=lifespan,
 )
-app.include_router(predictions.router)
+
+
+def _cors_origins() -> list[str]:
+    # Read without caching: the full configuration is loaded (and checked) at start-up.
+    try:
+        return load_env_settings().cors_origin_list
+    except ConfigError:
+        return []
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_cors_origins(),
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+for module in (auth, readings, predictions, alerts, kits, system, ws):
+    app.include_router(module.router)
 
 
 @app.get("/api/health")

@@ -22,8 +22,8 @@ v1 is a prototype for one site (Karur) and one kit; its models are trained on sy
 | 2. Ingestion (MQTT → QC → PostgreSQL, kit status, simulator) | ✅ |
 | 3. Synthetic data + ML (generator, labels, features, 6 XGBoost models, registry) | ✅ |
 | 4. Inference + alerts (hourly scheduler, predictions, email alerts) | ✅ |
-| 5. API + dashboard | ⏳ next |
-| 6. Real kit | — |
+| 5. API + dashboard (login, REST, WebSocket, 5 pages, light/dark) | ✅ |
+| 6. Real kit | ⏳ next |
 
 ---
 
@@ -32,7 +32,7 @@ v1 is a prototype for one site (Karur) and one kit; its models are trained on sy
 | Tool | Version | Notes |
 |---|---|---|
 | Python | 3.13 | `py -3.13` must work |
-| Node.js | 20+ | for the frontend (Phase 5) |
+| Node.js | 20+ | for the dashboard (`frontend/`) |
 | PostgreSQL | 16 or 17 | running as a Windows service |
 | Mosquitto | 2.x | installed in `C:\Program Files\mosquitto`. This project runs **its own broker on port 1884**; any existing Mosquitto service on 1883 is left alone |
 | Mailpit | optional | local test inbox for alert emails |
@@ -78,10 +78,24 @@ Use a separate PowerShell window for each:
 ```powershell
 .\scripts\start_broker.ps1        # MQTT broker on localhost:1884
 .\scripts\start_backend.ps1       # API on http://127.0.0.1:8000  (docs: /docs, health: /api/health)
+.\scripts\start_frontend.ps1      # dashboard on http://localhost:5173
 .\scripts\start_simulator.ps1     # simulated kit01, one reading every 5 min
 ```
 
 On first start the backend syncs kits from `site.yaml` and creates the admin user from `.env`. Logs go to the console and `logs\backend.log`.
+
+### Dashboard
+
+Open **http://localhost:5173** and sign in with `ADMIN_USERNAME` (or `ADMIN_EMAIL`) and `ADMIN_PASSWORD` from `.env`. The admin is created on the backend's first start; changing `ADMIN_PASSWORD` later does not change the stored password.
+
+| Page | Shows |
+|---|---|
+| Dashboard | Heat and wind risk for the next 3 h, live readings (BME280 and DHT11), 24 h / 48 h / 7 d charts, recent alerts |
+| History | Any date range, risk timeline, CSV download |
+| Alerts | All alerts with email status and whether the hazard actually happened |
+| Kits | Kit details, sensor health, data quality, system status, active settings, **Run prediction now** |
+
+The theme button (sidebar or login page) switches system / light / dark. The design follows `docs/design/ui_reference_v1.html`. The dev server forwards `/api` and `/ws` to the backend, so only port 5173 is used in the browser.
 
 ### Kit simulator options
 
@@ -110,12 +124,11 @@ The backend predicts every hour at **HH:00:30 IST** (`/api/health` shows the nex
 
 Restart the backend after changing `.env`.
 
-**Try an alert now** (broker, backend and mail server running; fresh database readings):
+**Try an alert now** (broker, backend, dashboard and — for local email — the mail server running):
 ```powershell
 .\scripts\start_simulator.ps1 --backfill-hours 48 --speed 100000 --count 576 --force wind:orange --force-minutes-ago 200
-Invoke-RestMethod -Method Post http://127.0.0.1:8000/api/predictions/run
 ```
-The run endpoint predicts for the current hour immediately (it is protected by login from Phase 5).
+Then on the dashboard's **Kits** page click **Run prediction now**. It predicts for the current hour at once; Orange/Red risk raises an alert (shown as a pop-up and on the Alerts page) and an email. If an alert for that hazard was emailed in the last 3 hours it is recorded as *cooldown* instead.
 
 ## ML pipeline
 

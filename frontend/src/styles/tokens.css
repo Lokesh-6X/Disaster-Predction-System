@@ -1,0 +1,79 @@
+/* Design tokens from docs/design/ui_reference_v1.html (light) plus a matching dark palette.
+   Hazard colours stay the same in both themes; text on them is always dark. */
+:root,
+:root[data-theme='light'] {
+  color-scheme: light;
+  --bg: #f3f6f5;
+  --side: #eaf0ee;
+  --card: #ffffff;
+  --active: #d8eeea;
+  --line: #d5dedc;
+  --line2: #e3eae8;
+  --input: #b7c4c1;
+  --text: #12201f;
+  --text2: #3e504d;
+  --muted: #5b6d6a;
+  --faint: #9aa8a5;
+  --accent: #0e7c70;
+  --accent-hover: #0a5a51;
+  --on-accent: #ffffff;
+
+  --green: #4cc38a;
+  --yellow: #e3b21c;
+  --orange: #f5934a;
+  --red: #f2555a;
+  --grey: #c9d3d1;
+  --yellow-soft: #f5ecc6;
+  --orange-soft: #f8e3cf;
+  --red-soft: #f6dcdd;
+
+  --warn-bg: #fff3c9;
+  --warn-text: #6b5300;
+  --ok-bg: #ddf3e6;
+  --ok-text: #1b6b42;
+  --bad-bg: #fde2e3;
+  --bad-text: #8c1d22;
+
+  --chart-dht: #9aa8a5;
+  --chart-pressure: #0e7c70;
+  --chart-wind: #3e504d;
+  --chart-humidity: #3a7bbf;
+
+  --mono: 'IBM Plex Mono', ui-monospace, Consolas, monospace;
+  --sans: 'Space Grotesk', system-ui, 'Segoe UI', sans-serif;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0f1615;
+  --side: #131e1c;
+  --card: #18221f;
+  --active: #1d3a35;
+  --line: #2a3835;
+  --line2: #222e2c;
+  --input: #46574f;
+  --text: #e6eeec;
+  --text2: #b6c5c1;
+  --muted: #8d9e9a;
+  --faint: #5f706c;
+  --accent: #3cb4a5;
+  --accent-hover: #5fcabc;
+  --on-accent: #06201c;
+
+  --grey: #3a4845;
+  --yellow-soft: #4a3f17;
+  --orange-soft: #4d3220;
+  --red-soft: #4d2426;
+
+  --warn-bg: #3d3313;
+  --warn-text: #f3d77a;
+  --ok-bg: #173826;
+  --ok-text: #8fdcb0;
+  --bad-bg: #44191b;
+  --bad-text: #f5a3a6;
+
+  --chart-dht: #6f807c;
+  --chart-pressure: #3cb4a5;
+  --chart-wind: #c9d6d3;
+  --chart-humidity: #6aa8e6;
+}

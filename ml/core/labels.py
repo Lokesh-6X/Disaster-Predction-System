@@ -31,6 +31,34 @@ def _forward_max(values: pd.Series, window: int, min_periods: int) -> np.ndarray
     return result[::-1]
 
 
+def hazard_flags(peak_wind_kmh, tmax, departure, site) -> dict:
+    """Which levels are reached, for scalars or arrays (the single definition of the bands).
+
+    ``departure`` is ``tmax`` minus the normal daily maximum for the date.
+    """
+    wind = site.hazards.wind.levels
+    heat = site.hazards.heat
+    heat_red = tmax >= heat.red_abs_c
+    hot = tmax >= site.heat_abs_threshold_c
+    return {
+        "wind_yellow": peak_wind_kmh >= wind.yellow,
+        "wind_orange": peak_wind_kmh >= wind.orange,
+        "wind_red": peak_wind_kmh >= wind.red,
+        "heat_yellow": (hot & (departure >= heat.departure_c.yellow)) | heat_red,
+        "heat_orange": (hot & (departure >= heat.departure_c.orange)) | heat_red,
+        "heat_red": heat_red,
+    }
+
+
+def reached_level(hazard: str, peak_wind_kmh: float, tmax: float, departure: float, site) -> str:
+    """Highest level of ``hazard`` reached by observed values (green if none)."""
+    flags = hazard_flags(peak_wind_kmh, tmax, departure, site)
+    for level in ("red", "orange", "yellow"):
+        if bool(flags[f"{hazard}_{level}"]):
+            return level
+    return "green"
+
+
 def make_labels(grid: pd.DataFrame, site, horizon_hours: int = 3) -> pd.DataFrame:
     """Labels indexed by prediction time *t* (site-local hour boundary, stored in UTC).
 
@@ -54,20 +82,7 @@ def make_labels(grid: pd.DataFrame, site, horizon_hours: int = 3) -> pd.DataFram
     local_doy = hourly.tz_convert(ZoneInfo(site.site.timezone)).dayofyear
     departure = tmax - normals.tmax_for(local_doy)
 
-    wind = site.hazards.wind.levels
-    heat = site.hazards.heat
-    abs_threshold = site.heat_abs_threshold_c
-
-    heat_red = tmax >= heat.red_abs_c
-    hot = tmax >= abs_threshold
-    raw = {
-        "wind_yellow": peak_wind_kmh >= wind.yellow,
-        "wind_orange": peak_wind_kmh >= wind.orange,
-        "wind_red": peak_wind_kmh >= wind.red,
-        "heat_yellow": (hot & (departure >= heat.departure_c.yellow)) | heat_red,
-        "heat_orange": (hot & (departure >= heat.departure_c.orange)) | heat_red,
-        "heat_red": heat_red,
-    }
+    raw = hazard_flags(peak_wind_kmh, tmax, departure, site)
     labels = pd.DataFrame(raw, index=hourly).astype(float)
     labels.loc[peak_wind_kmh.isna(), ["wind_yellow", "wind_orange", "wind_red"]] = np.nan
     labels.loc[tmax.isna(), ["heat_yellow", "heat_orange", "heat_red"]] = np.nan
