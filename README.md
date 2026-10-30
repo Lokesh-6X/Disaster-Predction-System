@@ -20,8 +20,8 @@ v1 is a prototype for one site (Karur) and one kit; its models are trained on sy
 | 0. Local environment | ✅ |
 | 1. Foundation (config, MQTT contract, backend skeleton, broker) | ✅ |
 | 2. Ingestion (MQTT → QC → PostgreSQL, kit status, simulator) | ✅ |
-| 3. Synthetic data + ML | ⏳ next |
-| 4. Inference + alerts | — |
+| 3. Synthetic data + ML (generator, labels, features, 6 XGBoost models, registry) | ✅ |
+| 4. Inference + alerts | ⏳ next |
 | 5. API + dashboard | — |
 | 6. Real kit | — |
 
@@ -65,6 +65,12 @@ Creates the database user and database from `.env`, then applies the schema migr
 ```
 Run it again whenever MQTT usernames or passwords in `.env` change.
 
+**5. Models**
+```powershell
+.venv\Scripts\python.exe -m ml.cli all
+```
+Generates the synthetic Karur dataset, builds features and labels, trains the six models and makes the new version active (about 30 s). See [ML pipeline](#ml-pipeline) for the individual steps.
+
 ## Running
 
 Use a separate PowerShell window for each:
@@ -87,8 +93,22 @@ On first start the backend syncs kits from `site.yaml` and creates the admin use
 | `start_simulator.ps1 --no-ts` | Omit timestamps (server uses arrival time) |
 | `start_simulator.ps1 --drop-after 3` | Vanish after 3 readings — the broker's Last-Will marks the kit offline |
 | `start_simulator.ps1 --count 10` | Stop cleanly after 10 readings |
+| `start_simulator.ps1 --backfill-hours 48 --speed 600 --force wind:red` | Fill history, then start a Red wind event at the present time (also `heat:yellow`/`orange`/`red`) |
 
-Ctrl+C stops it cleanly (status `offline`).
+The simulator uses the same weather model as the training data. Ctrl+C stops it cleanly (status `offline`).
+
+## ML pipeline
+
+| Command | Does |
+|---|---|
+| `python -m ml.cli generate` | Synthetic dataset → `ml/data/synthetic/karur_v1.parquet` (+ `.meta.json`, `.events.csv`, `.faults.csv`) |
+| `python -m ml.cli build` | QC + fusion → 5-min grid → hourly → 95 features + 6 labels → `ml/data/datasets/` |
+| `python -m ml.cli train [--activate]` | Train and evaluate 6 XGBoost models → `ml/models/v{N}/` |
+| `python -m ml.cli evaluate [vN]` | Show a version's metrics and top features |
+| `python -m ml.cli activate vN` | Use version `vN` for live predictions |
+| `python -m ml.cli all` | All of the above, activating the new version |
+
+Run them with `.venv\Scripts\python.exe` from the project folder. Settings: `config/synthetic.yaml` (dataset) and `config/site.yaml` (thresholds, normals). Scores come from synthetic data with a random split and do **not** reflect real-world accuracy.
 
 ## Tests and lint
 

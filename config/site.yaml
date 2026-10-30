@@ -65,13 +65,15 @@ alerts:
   cooldown_hours: 3
 
 normals:
-  # PROVISIONAL approximate monthly normals (Jan..Dec) for Karur / Tiruchirappalli.
-  # To be verified against IMD sources before training (open decision D8).
-  source: "Provisional estimate — verify against IMD normals (D8)"
-  provisional: true
-  tmax_c:         [30.0, 32.5, 35.5, 37.5, 38.0, 36.5, 35.5, 35.0, 34.5, 32.5, 30.0, 29.5]
-  tmin_c:         [20.0, 21.0, 23.0, 25.5, 26.5, 26.5, 25.5, 25.0, 24.5, 23.5, 22.0, 20.5]
+  # Monthly normals (Jan..Dec), nearest IMD station: Tiruchirappalli airport (~70 km east of Karur).
+  #   tmax_c, tmin_c, rh_evening_pct (17:30 IST): IMD 1991–2020 normals (verified, D8).
+  #   wind_kmh: estimate from modelled climatology (monsoon peak Jun–Jul); no IMD table found.
+  #   rh_morning_pct, mslp_hpa: estimates; no published station values found.
+  source: "IMD 1991–2020 normals, Tiruchirappalli airport (tmax/tmin/evening RH); other rows estimated"
+  provisional: false
+  tmax_c:         [30.7, 33.1, 36.0, 37.8, 38.2, 37.1, 36.5, 36.0, 35.4, 33.1, 30.6, 29.7]
+  tmin_c:         [20.7, 21.6, 23.5, 26.2, 26.8, 26.7, 26.4, 25.8, 25.2, 24.4, 23.1, 21.5]
   rh_morning_pct: [80, 75, 70, 70, 65, 62, 65, 68, 72, 80, 84, 83]
-  rh_evening_pct: [50, 42, 38, 42, 45, 45, 48, 50, 52, 62, 66, 60]
+  rh_evening_pct: [53, 42, 37, 42, 44, 45, 45, 48, 52, 64, 71, 66]
   wind_kmh:       [6, 6, 7, 8, 12, 18, 18, 17, 13, 7, 6, 6]
   mslp_hpa:       [1013, 1012, 1010, 1008, 1006, 1006, 1006, 1007, 1008, 1010, 1011, 1012]

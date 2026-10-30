@@ -516,4 +516,5 @@ README.md
 | D5 | Frontend: extra derived values (dew point, "feels like")? | Not in v1 unless requested |
 | D6 | Alerts table: show cooldown/failed rows or sent only? | Show all with status |
 | D7 | File name/location of the Claude Design HTML reference | **Decided: `docs/design/ui_reference_v1.html`** |
-| D8 | Exact IMD thresholds and Karur normals | Verify against IMD sources before Phase 3 |
+| D8 | Exact IMD thresholds and Karur normals | **Decided:** heat-wave departures (≥ 4.5 °C; severe > 6.4 °C) and 40 °C plains floor confirmed; monthly max/min temperature and 17:30 humidity from IMD 1991–2020 normals for Tiruchirappalli airport. Morning humidity, wind and pressure normals are estimates (no published station table found) |
+| D9 | IMD treats ≥ 45 °C as *heat wave* and ≥ 47 °C as *severe heat wave*; v1 maps ≥ 45 °C to Red | Kept for v1 (Karur's record is ≈ 44 °C, so it rarely matters); revisit with real data |
