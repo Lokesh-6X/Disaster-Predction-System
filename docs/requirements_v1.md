@@ -513,7 +513,7 @@ README.md
 | D1 | Database: PostgreSQL or SQLite | **Decided: PostgreSQL** (no TimescaleDB) |
 | D2 | Email provider | **Decided: Gmail SMTP (app password) for real alerts, Mailpit as optional test inbox** |
 | D3 | Installed tools: Python version, Node.js, Mosquitto | To confirm |
-| D4 | Firmware details: wind value instantaneous or averaged; actual sending interval; does the kit send `ts` | Contract handles all cases |
+| D4 | Firmware details: wind value instantaneous or averaged; actual sending interval; does the kit send `ts` | **Decided (2026-10-31):** wind is a 1-min average; sends every 3 min; no `ts` (arrival time used, flagged `ts_missing`); no offline buffering. Details in `mqtt_contract.md` §4 |
 | D5 | Frontend: extra derived values (dew point, "feels like")? | Not in v1 unless requested |
 | D6 | Alerts table: show cooldown/failed rows or sent only? | Show all with status |
 | D7 | File name/location of the Claude Design HTML reference | **Decided: `docs/design/ui_reference_v1.html`** |

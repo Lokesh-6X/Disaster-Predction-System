@@ -97,6 +97,15 @@ Unknown extra fields are ignored. `kit_id` is taken from the topic, not the payl
 
 Any interval from **1 to 5 minutes** is accepted without configuration changes. The kit should keep the interval steady; the server calculates data coverage from the readings it receives.
 
+### Current kit firmware (`kit01`, confirmed 2026-10-31 — decision D4)
+
+| Fact | Value | Effect on the server |
+|---|---|---|
+| Sending interval | every **3 minutes** | Every 5-min slot gets at least one reading; the Kits page expects 480 readings per 24 h |
+| `wind_speed_ms` | **1-minute average**, taken once per reading | "Peak wind" is the highest 1-min average among the readings, so short gusts are smoothed out and wind levels are reached less often than with true gusts |
+| `ts` | **not sent** (no NTP clock on the kit) | Arrival time is used; every reading is flagged `ts_missing` — expected, not an error |
+| Offline buffering | **none** — readings taken while offline are lost | Arrival time is always close to measurement time; outages show as gaps |
+
 ---
 
 ## 5. Status and Last-Will

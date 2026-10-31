@@ -285,4 +285,4 @@ Walk through acceptance criteria 1–8 (requirements §19) in the browser, in bo
 | Gmail sending account + app password | Phase 4 |
 | D8 — verified IMD normals and thresholds | Phase 3 (task 3.1) |
 | `docs/design/ui_reference_v1.html` | Phase 5B |
-| D4 — firmware details | Phase 6 |
+| D4 — firmware details | Phase 6 — **done** (1-min average wind, 3-min interval, no `ts`) |
